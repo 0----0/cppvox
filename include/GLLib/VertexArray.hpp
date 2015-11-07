@@ -13,7 +13,7 @@ public:
 
         static VertexArray create() {
                 VertexArray self;
-                glCreateVertexArrays(1, &self.id);
+                glGenVertexArrays(1, &self.id);
                 return self;
         }
         ~VertexArray() {

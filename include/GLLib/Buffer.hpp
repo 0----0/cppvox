@@ -12,7 +12,7 @@ public:
 
         static Buffer create() {
                 Buffer self;
-                glCreateBuffers(1, &self.id);
+                glGenBuffers(1, &self.id);
                 return self;
         }
         ~Buffer() {
@@ -20,7 +20,9 @@ public:
         }
 
         void fill(uint size, void* data, GLenum usage) {
-                glNamedBufferData(id, size, data, usage);
+                glBindBuffer(GL_ARRAY_BUFFER, id);
+                glBufferData(GL_ARRAY_BUFFER, size, data, usage);
+                glBindBuffer(GL_ARRAY_BUFFER, 0);
         }
 
         template<typename T>

@@ -237,9 +237,10 @@ public:
                 program.link();
                 program.use();
 
-                glVertexArrayAttribFormat(vao.getID(), 0, 2, GL_FLOAT, GL_FALSE, 0);
-                glVertexArrayAttribBinding(vao.getID(), 0, 0);
-                glEnableVertexArrayAttrib(vao.getID(), 0);
+                glBindVertexArray(vao.getID());
+                glVertexAttribFormat(0, 2, GL_FLOAT, GL_FALSE, 0);
+                glVertexAttribBinding(0, 0);
+                glEnableVertexAttribArray(0);
 
                 auto quadGeomVerts = std::vector<float> {
                         -1, -1,
@@ -255,18 +256,19 @@ public:
                 quadBuffer.fill(quadGeomVerts, GL_STATIC_DRAW);
                 quadIdxBuffer.fill(quadGeomIdxs, GL_STATIC_DRAW);
 
-                glVertexArrayVertexBuffer(vao.getID(), 0, quadBuffer.getID(), 0, sizeof(float)*2);
-                glVertexArrayElementBuffer(vao.getID(), quadIdxBuffer.getID());
+                glBindBuffer(GL_ARRAY_BUFFER, quadBuffer.getID());
+                glBindVertexBuffer(0, quadBuffer.getID(), 0, sizeof(float)*2);
+                glBindVertexArray(0);
         }
 
         void loadOctree(VoxelOctree& oct) {
                 glDeleteTextures(1, &octreeTexture);
-                glCreateTextures(GL_TEXTURE_BUFFER, 1, &octreeTexture);
+                glGenTextures(1, &octreeTexture);
+                glBindTexture(GL_TEXTURE_BUFFER, octreeTexture);
                 octreeBuffer.fill(oct.nodes, GL_STATIC_DRAW);
-                glTextureBuffer(octreeTexture, GL_R32UI, octreeBuffer.getID());
+                glTexBuffer(GL_TEXTURE_BUFFER, GL_R32UI, octreeBuffer.getID());
                 auto nodePool = program.getUniformLoc("nodePool");
                 glUniform1i(nodePool, 0);
-                glBindTextureUnit(0, octreeTexture);
         }
 
         void render(const Camera& camera) {
@@ -277,7 +279,9 @@ public:
                 auto camUni = program.getUniformLoc("camera");
                 glUniformMatrix4fv(camUni, 1, GL_FALSE, glm::value_ptr(camera.getTransform()));
 
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, quadIdxBuffer.getID());
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
                 glfwSwapBuffers(window);
         }
