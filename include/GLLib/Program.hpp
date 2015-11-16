@@ -34,7 +34,7 @@ public:
                 if (len == 0) { return ""; }
                 std::string infolog;
                 infolog.resize(len);
-                glGetShaderInfoLog(id, len, 0, &infolog[0]);
+                glGetProgramInfoLog(id, len, 0, &infolog[0]);
                 return infolog;
         }
 
