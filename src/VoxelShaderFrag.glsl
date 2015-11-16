@@ -1,5 +1,6 @@
-#version 300 es
+#version 330 core
 // #extension GL_ARB_gpu_shader5 : enable
+// #extension GL_ARB_shader_bit_encoding : enable
 precision mediump float;
 
 uint bitfieldExtract(uint bitfield, int offset, int size) {
