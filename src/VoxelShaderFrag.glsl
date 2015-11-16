@@ -1,4 +1,6 @@
-#version 450
+#version 330 core
+#extension GL_ARB_gpu_shader5 : enable
+precision mediump float;
 
 uniform usamplerBuffer nodePool;
 
@@ -120,8 +122,8 @@ vec3 convertPos(Ray ray, vec3 pos, float scale) {
 
 const uint MAX_STACK_SIZE = 23;
 
-uniform float aspectRatio = 3/4;
-uniform float screenWidth = 1024;
+const float aspectRatio = 3.0/4.0;
+const float screenWidth = 1024.0;
 
 float raycast(vec3 p, vec3 d) {
         Ray ray = makeRay(p, d);
@@ -179,7 +181,7 @@ float raycast(vec3 p, vec3 d) {
                                 uint msb = findMSB(differingBits);
 
                                 if(msb > 22) {
-                                        return -1;
+                                        return -1.0;
                                 }
                                 depth = 23 - msb;
                                 scale = exp2(-float(depth));
@@ -209,9 +211,9 @@ vec4 colorFromRay(vec3 p, vec3 d) {
         if (t == -1.0f) { return vec4(skyColor * baseColor, 1); }
         vec3 sunDir = normalize(vec3(0.5, 0.5, 0.5));
         vec3 rayEnd = p + d*t;
-        float t2 = raycast(rayEnd + sunDir * exp2(-20), sunDir);
-        if(t2 == -1) { t2 = 1; }
-        return vec4(mix(ambientColor, sunColor, clamp(t2,0,1)) * baseColor.rgb, 1);
+        float t2 = raycast(rayEnd + sunDir * exp2(-20.0f), sunDir);
+        if(t2 == -1.0) { t2 = 1.0; }
+        return vec4(mix(ambientColor, sunColor, clamp(t2,0.0,1.0)) * baseColor.rgb, 1);
 }
 
 vec4 depthColorFromRay(vec3 p, vec3 d) {
@@ -227,7 +229,7 @@ void main() {
         // gl_FragColor = vec4(texelFetch(nodePool, 0));
         vec4 _p = camera * vec4(0.0, 0.0, 0.0, 1.0);
         vec3 p = vec3(_p) / _p.w;
-        vec4 _d = camera * vec4(_position.x, 1, _position.y*3/4, 1);
+        vec4 _d = camera * vec4(_position.x, 1.0, _position.y*3.0/4.0, 1);
         // vec2 ang = _position;
         // ang.y *= -0.75;
         // ang *= M_PI/2;
