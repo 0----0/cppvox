@@ -1,6 +1,22 @@
-#version 330 core
-#extension GL_ARB_gpu_shader5 : enable
+#version 300 es
+// #extension GL_ARB_gpu_shader5 : enable
 precision mediump float;
+
+uint bitfieldExtract(uint bitfield, int offset, int size) {
+        uint shifted = bitfield >> offset;
+        uint mask = uint(1 << size) - 1u;
+        return shifted & mask;
+}
+
+uint bitCount(uint x) {
+        x -= (x >> 1u) & 0x55u;
+        x = (x & 0x33u) + ((x >> 2u) & 0x33u);
+        return (x + (x >> 4u)) & 0x0fu;
+}
+
+uint findMSB(uint x) {
+        return (floatBitsToUint(float(x)) >> 23u) - 127u;
+}
 
 uniform usamplerBuffer nodePool;
 
@@ -34,11 +50,11 @@ uint getChildIdx(uint parentIdx, uint childOctant) {
         uint childrenIdx = getChildrenIdx(parentIdx);
         uint parentNode = getNode(parentIdx);
         uint hasNodeMask = getLeafMask(parentNode) ^ getValidMask(parentNode);
-        return childrenIdx + bitCount(hasNodeMask & (0xFF >> 8-childOctant));
+        return childrenIdx + bitCount(hasNodeMask & (0xFFu >> 8u-childOctant));
 }
 
 bool checkMask(uint mask, uint octant) {
-        return bool(mask & (1 << octant));
+        return bool(mask & (1u << octant));
 }
 
 bool checkIsLeaf(uint parentNode, uint childOctant) {
@@ -58,15 +74,15 @@ struct Ray {
 
 Ray makeRay(vec3 p, vec3 d) {
         Ray ray;
-        ray.octantMask = 0;
-        p += 1;
+        ray.octantMask = 0u;
+        p += 1.0;
         float epsilon = exp2(-20.0f);
         // if (abs(d.x) < epsilon) { d.x = sign(d.x) * epsilon }
         // if (abs(d.y) < epsilon) { d.y = sign(d.y) * epsilon }
         // if (abs(d.z) < epsilon) { d.z = sign(d.z) * epsilon }
-        if (d.x > 0.0f) { p.x = 3.0f - p.x; d.x *= -1.0f; ray.octantMask ^= 1 << 0; }
-        if (d.y > 0.0f) { p.y = 3.0f - p.y; d.y *= -1.0f; ray.octantMask ^= 1 << 1; }
-        if (d.z > 0.0f) { p.z = 3.0f - p.z; d.z *= -1.0f; ray.octantMask ^= 1 << 2; }
+        if (d.x > 0.0f) { p.x = 3.0f - p.x; d.x *= -1.0f; ray.octantMask ^= 1u << 0u; }
+        if (d.y > 0.0f) { p.y = 3.0f - p.y; d.y *= -1.0f; ray.octantMask ^= 1u << 1u; }
+        if (d.z > 0.0f) { p.z = 3.0f - p.z; d.z *= -1.0f; ray.octantMask ^= 1u << 2u; }
         ray.asdf = p;
         ray.coeffs = vec3(1.0f/d.x, 1.0f/d.y, 1.0f/d.z);
         ray.offsets = vec3(-p.x * ray.coeffs.x, -p.y * ray.coeffs.y, -p.z * ray.coeffs.z);
@@ -92,35 +108,35 @@ float texit(Ray ray, vec3 pos) {
 }
 
 uint selectChild(Ray ray, vec3 pos, float childScale, float t) {
-        uint childOctant = 0;
+        uint childOctant = 0u;
         if(t < tx(ray, pos.x + childScale)) {
-                childOctant ^= 1 << 0;
+                childOctant ^= 1u << 0u;
         }
         if(t < ty(ray, pos.y + childScale)) {
-                childOctant ^= 1 << 1;
+                childOctant ^= 1u << 1u;
         }
         if(t < tz(ray, pos.z + childScale)) {
-                childOctant ^= 1 << 2;
+                childOctant ^= 1u << 2u;
         }
         return childOctant;
 }
 
 vec3 childOffset(uint childOctant) {
         vec3 offset = vec3(0.0f, 0.0f, 0.0f);
-        if(bool(childOctant >> 0 & 1)) { offset.x = 1.0f; }
-        if(bool(childOctant >> 1 & 1)) { offset.y = 1.0f; }
-        if(bool(childOctant >> 2 & 1)) { offset.z = 1.0f; }
+        if(bool(childOctant >> 0u & 1u)) { offset.x = 1.0f; }
+        if(bool(childOctant >> 1u & 1u)) { offset.y = 1.0f; }
+        if(bool(childOctant >> 2u & 1u)) { offset.z = 1.0f; }
         return offset;
 }
 
 vec3 convertPos(Ray ray, vec3 pos, float scale) {
-        if(bool(ray.octantMask & 1 << 0)) { pos.x = 1.0f - pos.x + scale; }
-        if(bool(ray.octantMask & 1 << 1)) { pos.y = 1.0f - pos.y + scale; }
-        if(bool(ray.octantMask & 1 << 2)) { pos.z = 1.0f - pos.z + scale; }
+        if(bool(ray.octantMask & 1u << 0u)) { pos.x = 1.0f - pos.x + scale; }
+        if(bool(ray.octantMask & 1u << 1u)) { pos.y = 1.0f - pos.y + scale; }
+        if(bool(ray.octantMask & 1u << 2u)) { pos.z = 1.0f - pos.z + scale; }
         return pos;
 }
 
-const uint MAX_STACK_SIZE = 23;
+const uint MAX_STACK_SIZE = 23u;
 
 const float aspectRatio = 3.0/4.0;
 const float screenWidth = 1024.0;
@@ -129,8 +145,8 @@ float raycast(vec3 p, vec3 d) {
         Ray ray = makeRay(p, d);
 
         uint parentStack[MAX_STACK_SIZE];
-        parentStack[0] = 0;
-        uint depth = 0;
+        parentStack[0] = 0u;
+        uint depth = 0u;
 
         float t = max(0.0f, tenter(ray, vec3(2.0f))); // Skip to the entrance of the octree.
         float tmax = texit(ray, vec3(1.0f));
@@ -158,21 +174,21 @@ float raycast(vec3 p, vec3 d) {
                         t = texit(ray, pos);
                         uint oldOctant = childOctant;
                         vec3 oldPos = pos;
-                        uint differingBits = 0;
+                        uint differingBits = 0u;
                         if (t == tx(ray, pos.x)) {
-                                childOctant ^= 1 << 0;
+                                childOctant ^= 1u << 0u;
                                 float new = pos.x - scale;
                                 differingBits |= floatBitsToUint(pos.x) ^ floatBitsToUint(new);
                                 pos.x = new;
                         }
                         if (t == ty(ray, pos.y)) {
-                                childOctant ^= 1 << 1;
+                                childOctant ^= 1u << 1u;
                                 float new = pos.y - scale;
                                 differingBits |= floatBitsToUint(pos.y) ^ floatBitsToUint(new);
                                 pos.y = new;
                         }
                         if (t == tz(ray, pos.z)) {
-                                childOctant ^= 1 << 2;
+                                childOctant ^= 1u << 2u;
                                 float new = pos.z - scale;
                                 differingBits |= floatBitsToUint(pos.z) ^ floatBitsToUint(new);
                                 pos.z = new;
@@ -180,10 +196,10 @@ float raycast(vec3 p, vec3 d) {
                         if(bool(~oldOctant & childOctant)) {
                                 uint msb = findMSB(differingBits);
 
-                                if(msb > 22) {
+                                if(msb > 22u) {
                                         return -1.0;
                                 }
-                                depth = 23 - msb;
+                                depth = 23u - msb;
                                 scale = exp2(-float(depth));
                                 depth--;
 
@@ -194,7 +210,7 @@ float raycast(vec3 p, vec3 d) {
                                 uint shz = floatBitsToUint(pos.z) >> msb;
                                 pos.z = uintBitsToFloat(shz << msb);
 
-                                childOctant = (shx & 1) | ((shy & 1) << 1) | ((shz & 1) << 2);
+                                childOctant = (shx & 1u) | ((shy & 1u) << 1u) | ((shz & 1u) << 2u);
                         }
                 }
         }
@@ -202,18 +218,18 @@ float raycast(vec3 p, vec3 d) {
 }
 
 vec4 colorFromRay(vec3 p, vec3 d) {
-        vec3 sunColor = vec3(1,0.97,0.87);
+        vec3 sunColor = vec3(1.0,0.97,0.87);
         vec3 ambientColor = vec3(0.1,0.2,0.3);
         vec3 skyColor = vec3(0.3, 0.6, 0.8);
-        vec3 baseColor = vec3(1);
+        vec3 baseColor = vec3(1.0);
 
         float t = raycast(p, d);
-        if (t == -1.0f) { return vec4(skyColor * baseColor, 1); }
+        if (t == -1.0f) { return vec4(skyColor * baseColor, 1.0); }
         vec3 sunDir = normalize(vec3(0.5, 0.5, 0.5));
         vec3 rayEnd = p + d*t;
         float t2 = raycast(rayEnd + sunDir * exp2(-20.0f), sunDir);
         if(t2 == -1.0) { t2 = 1.0; }
-        return vec4(mix(ambientColor, sunColor, clamp(t2,0.0,1.0)) * baseColor.rgb, 1);
+        return vec4(mix(ambientColor, sunColor, clamp(t2,0.0,1.0)) * baseColor.rgb, 1.0);
 }
 
 vec4 depthColorFromRay(vec3 p, vec3 d) {
